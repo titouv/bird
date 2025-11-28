@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { extractTweetId } from '../src/lib/extract-tweet-id.js';
 
 describe('CLI utilities', () => {
 	describe('extractTweetId', () => {
-		// Testing the URL extraction logic inline since it's a simple function
-		function extractTweetId(input: string): string {
-			const urlMatch = input.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
-			if (urlMatch) {
-				return urlMatch[1];
-			}
-			return input;
-		}
-
 		it('should extract ID from x.com URL', () => {
 			const url = 'https://x.com/steipete/status/1234567890123456789';
 			expect(extractTweetId(url)).toBe('1234567890123456789');

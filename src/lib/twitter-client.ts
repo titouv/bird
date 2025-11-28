@@ -77,6 +77,55 @@ export class TwitterClient {
 			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 	}
 
+	private findTweetInInstructions(
+		instructions:
+			| Array<{
+					entries?: Array<{
+						content?: {
+							itemContent?: {
+								tweet_results?: {
+									result?: {
+										rest_id?: string;
+										legacy?: {
+											full_text?: string;
+											created_at?: string;
+											reply_count?: number;
+											retweet_count?: number;
+											favorite_count?: number;
+										};
+										core?: {
+											user_results?: {
+												result?: {
+													legacy?: {
+														screen_name?: string;
+														name?: string;
+													};
+												};
+											};
+										};
+									};
+								};
+							};
+						};
+					}>;
+			  }>
+			| undefined,
+		tweetId: string,
+	) {
+		if (!instructions) return undefined;
+
+		for (const instruction of instructions) {
+			for (const entry of instruction.entries || []) {
+				const result = entry.content?.itemContent?.tweet_results?.result;
+				if (result?.rest_id === tweetId) {
+					return result;
+				}
+			}
+		}
+
+		return undefined;
+	}
+
 	private getHeaders(): Record<string, string> {
 		return {
 			authorization:
@@ -222,43 +271,13 @@ export class TwitterClient {
 				};
 			}
 
-			// Try to find the tweet in the conversation thread
-			const instructions = data.data?.threaded_conversation_with_injections_v2?.instructions;
-			let tweetResult:
-				| {
-						rest_id?: string;
-						legacy?: {
-							full_text?: string;
-							created_at?: string;
-							reply_count?: number;
-							retweet_count?: number;
-							favorite_count?: number;
-						};
-						core?: {
-							user_results?: {
-								result?: {
-									legacy?: {
-										screen_name?: string;
-										name?: string;
-									};
-								};
-							};
-						};
-				  }
-				| undefined;
-
-			if (instructions) {
-				for (const instruction of instructions) {
-					for (const entry of instruction.entries || []) {
-						const result = entry.content?.itemContent?.tweet_results?.result;
-						if (result?.rest_id === tweetId) {
-							tweetResult = result;
-							break;
-						}
-					}
-					if (tweetResult) break;
-				}
-			}
+			// Prefer direct tweetResult if present, otherwise search the conversation thread
+			let tweetResult =
+				data.data?.tweetResult?.result ??
+				this.findTweetInInstructions(
+					data.data?.threaded_conversation_with_injections_v2?.instructions,
+					tweetId,
+				);
 
 			if (!tweetResult) {
 				return {

@@ -2,11 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TwitterClient } from '../src/lib/twitter-client.js';
 
 describe('TwitterClient', () => {
+	const originalFetch = global.fetch;
 	const validCookies = {
 		authToken: 'test_auth_token',
 		ct0: 'test_ct0_token',
 		source: 'test',
 	};
+
+	afterEach(() => {
+		global.fetch = originalFetch;
+		vi.restoreAllMocks();
+	});
 
 	describe('constructor', () => {
 		it('should throw if authToken is missing', () => {
@@ -39,10 +45,6 @@ describe('TwitterClient', () => {
 		beforeEach(() => {
 			mockFetch = vi.fn();
 			global.fetch = mockFetch;
-		});
-
-		afterEach(() => {
-			vi.restoreAllMocks();
 		});
 
 		it('should post a tweet successfully', async () => {
@@ -127,10 +129,6 @@ describe('TwitterClient', () => {
 			global.fetch = mockFetch;
 		});
 
-		afterEach(() => {
-			vi.restoreAllMocks();
-		});
-
 		it('should post a reply with correct reply_to_tweet_id', async () => {
 			mockFetch.mockResolvedValueOnce({
 				ok: true,
@@ -157,6 +155,55 @@ describe('TwitterClient', () => {
 			const body = JSON.parse(options.body);
 			expect(body.variables.reply.in_reply_to_tweet_id).toBe('1234567890');
 			expect(body.variables.tweet_text).toBe('This is a reply');
+		});
+	});
+
+	describe('getTweet', () => {
+		let mockFetch: ReturnType<typeof vi.fn>;
+
+		beforeEach(() => {
+			mockFetch = vi.fn();
+			global.fetch = mockFetch;
+		});
+
+		it('should return tweet data from root tweetResult', async () => {
+			mockFetch.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					data: {
+						tweetResult: {
+							result: {
+								rest_id: '12345',
+								legacy: {
+									full_text: 'Root tweet text',
+									created_at: 'Mon Jan 01 00:00:00 +0000 2024',
+									reply_count: 1,
+									retweet_count: 2,
+									favorite_count: 3,
+								},
+								core: {
+									user_results: {
+										result: {
+											legacy: {
+												screen_name: 'user',
+												name: 'User Name',
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}),
+			});
+
+			const client = new TwitterClient({ cookies: validCookies });
+			const result = await client.getTweet('12345');
+
+			expect(result.success).toBe(true);
+			expect(result.tweet?.id).toBe('12345');
+			expect(result.tweet?.text).toBe('Root tweet text');
+			expect(result.tweet?.author.username).toBe('user');
 		});
 	});
 });

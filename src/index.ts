@@ -11,6 +11,7 @@
 
 import { Command } from 'commander';
 import { resolveCredentials } from './lib/cookies.js';
+import { extractTweetId } from './lib/extract-tweet-id.js';
 import { TwitterClient } from './lib/twitter-client.js';
 
 const program = new Command();
@@ -22,19 +23,6 @@ program
 	.option('--auth-token <token>', 'Twitter auth_token cookie')
 	.option('--ct0 <token>', 'Twitter ct0 cookie')
 	.option('--chrome-profile <name>', 'Chrome profile name for cookie extraction');
-
-/**
- * Extract tweet ID from URL or return as-is if already an ID
- */
-function extractTweetId(input: string): string {
-	// If it's a URL, extract the tweet ID
-	const urlMatch = input.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
-	if (urlMatch) {
-		return urlMatch[1];
-	}
-	// Assume it's already an ID
-	return input;
-}
 
 // Tweet command
 program
