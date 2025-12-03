@@ -100,11 +100,7 @@ program
   .option('--auth-token <token>', 'Twitter auth_token cookie')
   .option('--ct0 <token>', 'Twitter ct0 cookie')
   .option('--chrome-profile <name>', 'Chrome profile name for cookie extraction', config.chromeProfile)
-  .option(
-    '--firefox-profile <name>',
-    'Firefox profile name for cookie extraction',
-    config.firefoxProfile || 'default-release',
-  )
+  .option('--firefox-profile <name>', 'Firefox profile name for cookie extraction', config.firefoxProfile)
   .option('--sweetistics-api-key <key>', 'Sweetistics API key (or set SWEETISTICS_API_KEY)')
   .option(
     '--sweetistics-base-url <url>',
