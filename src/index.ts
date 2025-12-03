@@ -53,7 +53,7 @@ function readConfigFile(path: string): Partial<BirdConfig> {
     const parsed = JSON5.parse(raw) as Partial<BirdConfig>;
     return parsed ?? {};
   } catch (error) {
-    console.error(colors.muted(`⚠️  Failed to parse config at ${path}: ${error instanceof Error ? error.message : String(error)}`));
+    console.error(colors.muted(`⚠️ Failed to parse config at ${path}: ${error instanceof Error ? error.message : String(error)}`));
     return {};
   }
 }
@@ -206,7 +206,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -280,7 +280,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -356,7 +356,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -424,7 +424,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -481,7 +481,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -540,7 +540,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -594,7 +594,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -644,7 +644,7 @@ program
         if (result.user.email) {
           console.log(`📧 ${result.user.email}`);
         }
-        console.log(`⚙️  Engine: ${resolvedEngine}`);
+        console.log(`⚙️ Engine: ${resolvedEngine}`);
         return;
       }
 
@@ -660,7 +660,7 @@ program
     });
 
     for (const warning of warnings) {
-      console.error(`⚠️  ${warning}`);
+      console.error(`⚠️ ${warning}`);
     }
 
     if (!cookies.authToken || !cookies.ct0) {
@@ -678,7 +678,7 @@ program
     if (result.success && result.user) {
       console.log(`🙋 Logged in as @${result.user.username} (${result.user.name})`);
       console.log(`🪪 User ID: ${result.user.id}`);
-      console.log(`⚙️  Engine: ${resolvedEngine}`);
+      console.log(`⚙️ Engine: ${resolvedEngine}`);
     } else {
       console.error(`❌ Failed to determine current user: ${result.error ?? 'Unknown error'}`);
       process.exit(1);
@@ -717,7 +717,7 @@ program
     }
 
     if (warnings.length > 0) {
-      console.log('\n⚠️  Warnings:');
+      console.log('\n⚠️ Warnings:');
       for (const warning of warnings) {
         console.log(`   - ${warning}`);
       }
