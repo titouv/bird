@@ -48,6 +48,36 @@ describe('SweetisticsClient', () => {
     expect(result.error).toContain('Unauthorized');
   });
 
+  it('uploads media and passes mediaIds into tweet', async () => {
+    const fetchMock = vi
+      .fn()
+      // upload
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ mediaId: 'mid-1' }),
+      })
+      // tweet
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, tweetId: '789' }),
+      });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const client = new SweetisticsClient({ baseUrl: 'https://api.example.com', apiKey: 'sweet-test' });
+    const uploadRes = await client.uploadMedia({ data: 'Zm9v', mimeType: 'image/png', alt: 'foo' });
+    expect(uploadRes.success).toBe(true);
+    expect(uploadRes.mediaId).toBe('mid-1');
+
+    const tweetRes = await client.tweet('hi', undefined, ['mid-1']);
+    expect(tweetRes.success).toBe(true);
+
+    // First call: upload; second call: tweet with mediaIds
+    const [, tweetInit] = fetchMock.mock.calls[1];
+    expect(JSON.parse((tweetInit as RequestInit).body as string)).toMatchObject({ mediaIds: ['mid-1'] });
+  });
+
   it('reads a tweet', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
