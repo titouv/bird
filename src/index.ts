@@ -407,12 +407,6 @@ program
       }
     }
 
-    const hasVideo = media.some((m) => m.mime.startsWith('video/'));
-    if (hasVideo) {
-      console.error(`${p('err')}Video uploads are only supported via Sweetistics (for now).`);
-      process.exit(1);
-    }
-
     const { cookies, warnings } = await resolveCredentials({
       authToken: opts.authToken,
       ct0: opts.ct0,
@@ -545,12 +539,6 @@ program
         }
         process.exit(1);
       }
-    }
-
-    const hasVideo = media.some((m) => m.mime.startsWith('video/'));
-    if (hasVideo) {
-      console.error(`${p('err')}Video uploads are only supported via Sweetistics (for now).`);
-      process.exit(1);
     }
 
     const { cookies, warnings } = await resolveCredentials({

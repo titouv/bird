@@ -387,11 +387,6 @@ export class TwitterClient {
     const category = this.mediaCategoryForMime(input.mimeType);
     if (!category) return { success: false, error: `Unsupported media type: ${input.mimeType}` };
 
-    // Keep scope small: images/gif first. Video requires longer processing + larger chunks.
-    if (input.mimeType.startsWith('video/')) {
-      return { success: false, error: 'Video uploads are not supported via GraphQL yet (use Sweetistics)' };
-    }
-
     try {
       const initParams = new URLSearchParams({
         command: 'INIT',
@@ -501,7 +496,7 @@ export class TwitterClient {
         }
       }
 
-      if (input.alt) {
+      if (input.alt && input.mimeType.startsWith('image/')) {
         const metaResp = await this.fetchWithTimeout(TWITTER_MEDIA_METADATA_URL, {
           method: 'POST',
           headers: this.getJsonHeaders(),

@@ -277,12 +277,37 @@ describe('TwitterClient', () => {
       expect(JSON.parse(metaOptions.body)).toEqual({ media_id: '999', alt_text: { text: 'alt text' } });
     });
 
-    it('rejects video uploads', async () => {
+    it('uploads a video and polls processing status', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ media_id_string: '777' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ processing_info: { state: 'pending', check_after_secs: 0 } }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ processing_info: { state: 'succeeded' } }),
+        });
+
       const client = new TwitterClient({ cookies: validCookies });
-      const data = new Uint8Array([1, 2, 3]);
-      const result = await client.uploadMedia({ data, mimeType: 'video/mp4' });
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Video uploads are not supported');
+      const data = new Uint8Array([1, 2, 3, 4, 5]);
+      const result = await client.uploadMedia({ data, mimeType: 'video/mp4', alt: 'ignored' });
+
+      expect(result.success).toBe(true);
+      expect(result.mediaId).toBe('777');
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+
+      const [, finalizeOptions] = mockFetch.mock.calls[2];
+      expect((finalizeOptions.body as URLSearchParams).get('command')).toBe('FINALIZE');
+
+      const [statusUrl] = mockFetch.mock.calls[3];
+      expect(String(statusUrl)).toContain('command=STATUS');
     });
   });
 

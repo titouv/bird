@@ -6,7 +6,7 @@
 - Output controls: `--plain`, `--no-emoji`, `--no-color` (respects `NO_COLOR`).
 - `help` command: `bird help <command>`.
 - Runtime GraphQL query ID refresh: `bird query-ids --fresh` (cached on disk; auto-retry on 404; override cache via `BIRD_QUERY_IDS_CACHE`).
-- GraphQL media uploads for images/GIFs via `--media` (video still requires Sweetistics).
+- GraphQL media uploads via `--media` (up to 4 images/GIFs, or 1 video).
 
 ### Fixed
 - CLI `--version`: read version from `package.json`/`VERSION` (no hardcoded string) + append git sha when available.

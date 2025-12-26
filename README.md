@@ -130,7 +130,7 @@ Exit codes:
 
 - Attach media with `--media` (repeatable) and optional `--alt` per item.
 - Up to 4 images/GIFs, or 1 video (no mixing). Supported: jpg, jpeg, png, webp, gif, mp4, mov.
-- `--engine graphql`: images/GIFs supported (uploads via Twitter legacy upload endpoint + cookies).
+- `--engine graphql`: images/GIFs + 1 video supported (uploads via Twitter legacy upload endpoint + cookies; video may take longer to process).
 - `--engine sweetistics`: images + video supported (requires `SWEETISTICS_API_KEY`).
 
 Example:
