@@ -5,10 +5,11 @@
 ### Added
 - `likes` command to list your liked tweets (thanks @swairshah).
 - Quoted tweet data in JSON output + `--quote-depth` (thanks @alexknowshtml).
+- `following`/`followers` commands to list users (thanks @lockmeister).
 
 ### Changed
 - Query ID updater now tracks the Likes GraphQL operation.
-
+- Query ID updater now tracks Following/Followers GraphQL operations.
 ## 0.4.1 — 2025-12-31
 
 ### Added

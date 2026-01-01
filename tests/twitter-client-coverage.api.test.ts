@@ -17,6 +17,8 @@ type ResponseLike = {
 
 type TwitterClientApiPrivate = TwitterClient & {
   getBookmarksQueryIds: () => Promise<string[]>;
+  getFollowingQueryIds: () => Promise<string[]>;
+  getFollowersQueryIds: () => Promise<string[]>;
   getLikesQueryIds: () => Promise<string[]>;
   getCurrentUser: () => Promise<{
     success: boolean;
@@ -206,6 +208,67 @@ describe('TwitterClient API coverage', () => {
 
       const client = new TwitterClient({ cookies: validCookies });
       const result = await client.getBookmarks(1);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('HTTP 404');
+    });
+  });
+
+  describe('following/followers error paths', () => {
+    it('returns an error for non-ok responses', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce(makeResponse({ ok: false, status: 500, text: async () => 'down' }));
+      global.fetch = mockFetch as unknown as typeof fetch;
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClientApiPrivate;
+      clientPrivate.getFollowingQueryIds = async () => ['test'];
+
+      const result = await client.getFollowing('123', 1);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('HTTP 500');
+    });
+
+    it('returns API errors from payloads', async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce(
+        makeResponse({
+          json: async () => ({ errors: [{ message: 'bad' }] }),
+        }),
+      );
+      global.fetch = mockFetch as unknown as typeof fetch;
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClientApiPrivate;
+      clientPrivate.getFollowersQueryIds = async () => ['test'];
+
+      const result = await client.getFollowers('123', 1);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('bad');
+    });
+
+    it('returns unknown error when no query ids are available', async () => {
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClientApiPrivate;
+      clientPrivate.getFollowingQueryIds = async () => [];
+
+      const result = await client.getFollowing('123', 1);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unknown error fetching following');
+    });
+
+    it('returns the second attempt error after 404s', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(makeResponse({ ok: false, status: 404, text: async () => 'nope' }));
+      global.fetch = mockFetch as unknown as typeof fetch;
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClientApiPrivate;
+      clientPrivate.getFollowersQueryIds = async () => ['test'];
+
+      const result = await client.getFollowers('123', 1);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('HTTP 404');

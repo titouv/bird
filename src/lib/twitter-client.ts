@@ -28,6 +28,8 @@ const FALLBACK_QUERY_IDS = {
   SearchTimeline: 'M1jEez78PEfVfbQLvlWMvQ',
   UserArticlesTweets: '8zBy9h4L90aDL02RsBcCFg',
   Bookmarks: 'RV1g3b8n_SGOHwkqKYSCFw',
+  Following: 'BEkNpEt5pNETESoqMsTEGA',
+  Followers: 'kuFUYP9eV1FPoEy4N-pi7w',
   Likes: 'JR2gceKucIKcVNB_9JkhsA',
   BookmarkFolderTimeline: 'KJIQpsvxrTfRIlbaRIySHQ',
 } as const;
@@ -256,6 +258,24 @@ export interface CurrentUserResult {
     username: string;
     name: string;
   };
+  error?: string;
+}
+
+export interface TwitterUser {
+  id: string;
+  username: string;
+  name: string;
+  description?: string;
+  followers_count?: number;
+  following_count?: number;
+  is_blue_verified?: boolean;
+  profile_image_url?: string;
+  created_at?: string;
+}
+
+export interface FollowingResult {
+  success: boolean;
+  users?: TwitterUser[];
   error?: string;
 }
 
@@ -2039,6 +2059,310 @@ export class TwitterClient {
       const secondAttempt = await tryOnce();
       if (secondAttempt.success) {
         return { success: true, tweets: secondAttempt.tweets };
+      }
+      return { success: false, error: secondAttempt.error };
+    }
+
+    return { success: false, error: firstAttempt.error };
+  }
+
+  private buildFollowingFeatures(): Record<string, boolean> {
+    return {
+      rweb_video_screen_enabled: true,
+      profile_label_improvements_pcf_label_in_post_enabled: false,
+      responsive_web_profile_redirect_enabled: true,
+      rweb_tipjar_consumption_enabled: true,
+      verified_phone_label_enabled: false,
+      creator_subscriptions_tweet_preview_api_enabled: true,
+      responsive_web_graphql_timeline_navigation_enabled: true,
+      responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+      premium_content_api_read_enabled: true,
+      communities_web_enable_tweet_community_results_fetch: true,
+      c9s_tweet_anatomy_moderator_badge_enabled: true,
+      responsive_web_grok_analyze_button_fetch_trends_enabled: false,
+      responsive_web_grok_analyze_post_followups_enabled: false,
+      responsive_web_jetfuel_frame: false,
+      responsive_web_grok_share_attachment_enabled: false,
+      articles_preview_enabled: true,
+      responsive_web_edit_tweet_api_enabled: true,
+      graphql_is_translatable_rweb_tweet_is_translatable_enabled: true,
+      view_counts_everywhere_api_enabled: true,
+      longform_notetweets_consumption_enabled: true,
+      responsive_web_twitter_article_tweet_consumption_enabled: true,
+      tweet_awards_web_tipping_enabled: true,
+      responsive_web_grok_show_grok_translated_post: false,
+      responsive_web_grok_analysis_button_from_backend: false,
+      creator_subscriptions_quote_tweet_preview_enabled: false,
+      freedom_of_speech_not_reach_fetch_enabled: true,
+      standardized_nudges_misinfo: true,
+      tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
+      longform_notetweets_rich_text_read_enabled: true,
+      longform_notetweets_inline_media_enabled: true,
+      responsive_web_grok_image_annotation_enabled: false,
+      responsive_web_grok_imagine_annotation_enabled: false,
+      responsive_web_grok_community_note_auto_translation_is_enabled: false,
+      responsive_web_enhance_cards_enabled: false,
+    };
+  }
+
+  private async getFollowingQueryIds(): Promise<string[]> {
+    const primary = await this.getQueryId('Following');
+    return Array.from(new Set([primary, 'BEkNpEt5pNETESoqMsTEGA']));
+  }
+
+  private async getFollowersQueryIds(): Promise<string[]> {
+    const primary = await this.getQueryId('Followers');
+    return Array.from(new Set([primary, 'kuFUYP9eV1FPoEy4N-pi7w']));
+  }
+
+  private parseUsersFromInstructions(
+    instructions: Array<{ type?: string; entries?: Array<unknown> }> | undefined,
+  ): TwitterUser[] {
+    if (!instructions) {
+      return [];
+    }
+
+    const users: TwitterUser[] = [];
+
+    for (const instruction of instructions) {
+      if (!instruction.entries) {
+        continue;
+      }
+
+      for (const entry of instruction.entries) {
+        const content = (entry as { content?: { itemContent?: { user_results?: { result?: unknown } } } })?.content;
+        const rawUserResult = content?.itemContent?.user_results?.result as
+          | {
+              __typename?: string;
+              rest_id?: string;
+              is_blue_verified?: boolean;
+              user?: unknown;
+              legacy?: {
+                screen_name?: string;
+                name?: string;
+                description?: string;
+                followers_count?: number;
+                friends_count?: number;
+                profile_image_url_https?: string;
+                created_at?: string;
+              };
+              core?: {
+                screen_name?: string;
+                name?: string;
+                created_at?: string;
+              };
+              avatar?: {
+                image_url?: string;
+              };
+            }
+          | undefined;
+
+        const userResult =
+          rawUserResult?.__typename === 'UserWithVisibilityResults' && rawUserResult.user
+            ? (rawUserResult.user as typeof rawUserResult)
+            : rawUserResult;
+
+        if (!userResult || userResult.__typename !== 'User') {
+          continue;
+        }
+
+        const legacy = userResult.legacy;
+        const core = userResult.core;
+        const username = legacy?.screen_name ?? core?.screen_name;
+        if (!userResult.rest_id || !username) {
+          continue;
+        }
+
+        users.push({
+          id: userResult.rest_id,
+          username,
+          name: legacy?.name ?? core?.name ?? username,
+          description: legacy?.description,
+          followers_count: legacy?.followers_count,
+          following_count: legacy?.friends_count,
+          is_blue_verified: userResult.is_blue_verified,
+          profile_image_url: legacy?.profile_image_url_https ?? userResult.avatar?.image_url,
+          created_at: legacy?.created_at ?? core?.created_at,
+        });
+      }
+    }
+
+    return users;
+  }
+
+  /**
+   * Get users that a user is following
+   */
+  async getFollowing(userId: string, count = 20): Promise<FollowingResult> {
+    const variables = {
+      userId,
+      count,
+      includePromotedContent: false,
+    };
+
+    const features = this.buildFollowingFeatures();
+
+    const params = new URLSearchParams({
+      variables: JSON.stringify(variables),
+      features: JSON.stringify(features),
+    });
+
+    const tryOnce = async () => {
+      let lastError: string | undefined;
+      let had404 = false;
+      const queryIds = await this.getFollowingQueryIds();
+
+      for (const queryId of queryIds) {
+        const url = `${TWITTER_API_BASE}/${queryId}/Following?${params.toString()}`;
+
+        try {
+          const response = await this.fetchWithTimeout(url, {
+            method: 'GET',
+            headers: this.getHeaders(),
+          });
+
+          if (response.status === 404) {
+            had404 = true;
+            lastError = `HTTP ${response.status}`;
+            continue;
+          }
+
+          if (!response.ok) {
+            const text = await response.text();
+            return { success: false as const, error: `HTTP ${response.status}: ${text.slice(0, 200)}`, had404 };
+          }
+
+          const data = (await response.json()) as {
+            data?: {
+              user?: {
+                result?: {
+                  timeline?: {
+                    timeline?: {
+                      instructions?: Array<{ type?: string; entries?: Array<unknown> }>;
+                    };
+                  };
+                };
+              };
+            };
+            errors?: Array<{ message: string }>;
+          };
+
+          if (data.errors && data.errors.length > 0) {
+            return { success: false as const, error: data.errors.map((e) => e.message).join(', '), had404 };
+          }
+
+          const instructions = data.data?.user?.result?.timeline?.timeline?.instructions;
+          const users = this.parseUsersFromInstructions(instructions);
+
+          return { success: true as const, users, had404 };
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      return { success: false as const, error: lastError ?? 'Unknown error fetching following', had404 };
+    };
+
+    const firstAttempt = await tryOnce();
+    if (firstAttempt.success) {
+      return { success: true, users: firstAttempt.users };
+    }
+
+    if (firstAttempt.had404) {
+      await this.refreshQueryIds();
+      const secondAttempt = await tryOnce();
+      if (secondAttempt.success) {
+        return { success: true, users: secondAttempt.users };
+      }
+      return { success: false, error: secondAttempt.error };
+    }
+
+    return { success: false, error: firstAttempt.error };
+  }
+
+  /**
+   * Get users that follow a user
+   */
+  async getFollowers(userId: string, count = 20): Promise<FollowingResult> {
+    const variables = {
+      userId,
+      count,
+      includePromotedContent: false,
+    };
+
+    const features = this.buildFollowingFeatures();
+
+    const params = new URLSearchParams({
+      variables: JSON.stringify(variables),
+      features: JSON.stringify(features),
+    });
+
+    const tryOnce = async () => {
+      let lastError: string | undefined;
+      let had404 = false;
+      const queryIds = await this.getFollowersQueryIds();
+
+      for (const queryId of queryIds) {
+        const url = `${TWITTER_API_BASE}/${queryId}/Followers?${params.toString()}`;
+
+        try {
+          const response = await this.fetchWithTimeout(url, {
+            method: 'GET',
+            headers: this.getHeaders(),
+          });
+
+          if (response.status === 404) {
+            had404 = true;
+            lastError = `HTTP ${response.status}`;
+            continue;
+          }
+
+          if (!response.ok) {
+            const text = await response.text();
+            return { success: false as const, error: `HTTP ${response.status}: ${text.slice(0, 200)}`, had404 };
+          }
+
+          const data = (await response.json()) as {
+            data?: {
+              user?: {
+                result?: {
+                  timeline?: {
+                    timeline?: {
+                      instructions?: Array<{ type?: string; entries?: Array<unknown> }>;
+                    };
+                  };
+                };
+              };
+            };
+            errors?: Array<{ message: string }>;
+          };
+
+          if (data.errors && data.errors.length > 0) {
+            return { success: false as const, error: data.errors.map((e) => e.message).join(', '), had404 };
+          }
+
+          const instructions = data.data?.user?.result?.timeline?.timeline?.instructions;
+          const users = this.parseUsersFromInstructions(instructions);
+
+          return { success: true as const, users, had404 };
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      return { success: false as const, error: lastError ?? 'Unknown error fetching followers', had404 };
+    };
+
+    const firstAttempt = await tryOnce();
+    if (firstAttempt.success) {
+      return { success: true, users: firstAttempt.users };
+    }
+
+    if (firstAttempt.had404) {
+      await this.refreshQueryIds();
+      const secondAttempt = await tryOnce();
+      if (secondAttempt.success) {
+        return { success: true, users: secondAttempt.users };
       }
       return { success: false, error: secondAttempt.error };
     }

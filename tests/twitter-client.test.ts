@@ -1241,6 +1241,192 @@ describe('TwitterClient', () => {
     });
   });
 
+  describe('following/followers', () => {
+    let mockFetch: ReturnType<typeof vi.fn>;
+
+    const makeUserResult = (id: string, username: string, name = username) => ({
+      __typename: 'User',
+      rest_id: id,
+      legacy: {
+        screen_name: username,
+        name,
+        description: `bio-${id}`,
+        followers_count: 10,
+        friends_count: 5,
+        profile_image_url_https: `https://example.com/${id}.jpg`,
+        created_at: '2024-01-01T00:00:00Z',
+      },
+    });
+
+    beforeEach(() => {
+      mockFetch = vi.fn();
+      global.fetch = mockFetch as unknown as typeof fetch;
+    });
+
+    it('fetches following users and filters invalid entries', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            user: {
+              result: {
+                timeline: {
+                  timeline: {
+                    instructions: [
+                      {
+                        type: 'TimelineAddEntries',
+                        entries: [
+                          {
+                            content: {
+                              itemContent: {
+                                user_results: {
+                                  result: makeUserResult('1', 'alpha', 'Alpha'),
+                                },
+                              },
+                            },
+                          },
+                          {
+                            content: {
+                              itemContent: {
+                                user_results: {
+                                  result: { __typename: 'User', rest_id: '2' },
+                                },
+                              },
+                            },
+                          },
+                          {
+                            content: {
+                              itemContent: {
+                                user_results: {
+                                  result: { __typename: 'TimelineUser' },
+                                },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClient & { getFollowingQueryIds: () => Promise<string[]> };
+      clientPrivate.getFollowingQueryIds = async () => ['test'];
+
+      const result = await client.getFollowing('123', 2);
+
+      expect(result.success).toBe(true);
+      expect(result.users?.length).toBe(1);
+      expect(result.users?.[0].username).toBe('alpha');
+      const [url] = mockFetch.mock.calls[0];
+      expect(String(url)).toContain('/Following?');
+    });
+
+    it('fetches followers and unwraps visibility results', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            user: {
+              result: {
+                timeline: {
+                  timeline: {
+                    instructions: [
+                      {
+                        entries: [
+                          {
+                            content: {
+                              itemContent: {
+                                user_results: {
+                                  result: {
+                                    __typename: 'UserWithVisibilityResults',
+                                    user: makeUserResult('9', 'vis', 'Visible'),
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClient & { getFollowersQueryIds: () => Promise<string[]> };
+      clientPrivate.getFollowersQueryIds = async () => ['test'];
+
+      const result = await client.getFollowers('123', 1);
+
+      expect(result.success).toBe(true);
+      expect(result.users?.[0].username).toBe('vis');
+      const [url] = mockFetch.mock.calls[0];
+      expect(String(url)).toContain('/Followers?');
+    });
+
+    it('refreshes query IDs after 404s', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'nope' }).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            user: {
+              result: {
+                timeline: {
+                  timeline: {
+                    instructions: [
+                      {
+                        entries: [
+                          {
+                            content: {
+                              itemContent: {
+                                user_results: {
+                                  result: makeUserResult('1', 'alpha', 'Alpha'),
+                                },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const client = new TwitterClient({ cookies: validCookies });
+      const clientPrivate = client as unknown as TwitterClient & {
+        getFollowingQueryIds: () => Promise<string[]>;
+        refreshQueryIds: () => Promise<void>;
+      };
+      clientPrivate.getFollowingQueryIds = async () => ['test'];
+      let refreshed = false;
+      clientPrivate.refreshQueryIds = async () => {
+        refreshed = true;
+      };
+
+      const result = await client.getFollowing('123', 1);
+
+      expect(refreshed).toBe(true);
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
   describe('likes', () => {
     let mockFetch: ReturnType<typeof vi.fn>;
 
