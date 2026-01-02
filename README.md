@@ -51,6 +51,8 @@ bird mentions --user @steipete -n 5
 # Bookmarks
 bird bookmarks -n 5
 bird bookmarks --folder-id 123456789123456789 -n 5 # https://x.com/i/bookmarks/<folder-id>
+bird bookmarks --all --json
+bird bookmarks --all --max-pages 2 --json
 
 # Likes
 bird likes -n 5
@@ -91,7 +93,7 @@ const result = await client.search('from:steipete', 50);
 - `bird thread <tweet-id-or-url> [--json]` — show the full conversation thread.
 - `bird search "<query>" [-n count] [--json]` — search for tweets matching a query.
 - `bird mentions [-n count] [--user @handle] [--json]` — find tweets mentioning a user (defaults to the authenticated user).
-- `bird bookmarks [-n count] [--folder-id id] [--json]` — list your bookmarked tweets (or a specific bookmark folder).
+- `bird bookmarks [-n count] [--folder-id id] [--all] [--max-pages n] [--json]` — list your bookmarked tweets (or a specific bookmark folder); `--max-pages` requires `--all`.
 - `bird likes [-n count] [--json]` — list your liked tweets.
 - `bird following [--user <userId>] [-n count] [--json]` — list users that you (or another user) follow.
 - `bird followers [--user <userId>] [-n count] [--json]` — list users that follow you (or another user).
