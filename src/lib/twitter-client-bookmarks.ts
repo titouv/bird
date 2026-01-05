@@ -16,14 +16,14 @@ export function withBookmarks<TBase extends AbstractConstructor<TwitterClientBas
     }
 
     async unbookmark(tweetId: string): Promise<BookmarkMutationResult> {
+      // TODO: verify if DeleteBookmark requires client user ID or additional payload fields; add ensureClientUserId() if needed (needs live API test).
       const variables = { tweet_id: tweetId };
       let queryId = await this.getQueryId('DeleteBookmark');
       let urlWithOperation = `${TWITTER_API_BASE}/${queryId}/DeleteBookmark`;
 
       const buildBody = () => JSON.stringify({ variables, queryId });
+      const buildHeaders = () => ({ ...this.getHeaders(), referer: `https://x.com/i/status/${tweetId}` });
       let body = buildBody();
-
-      const headers = { ...this.getHeaders(), referer: `https://x.com/i/status/${tweetId}` };
 
       const parseResponse = async (response: Response): Promise<BookmarkMutationResult> => {
         if (!response.ok) {
@@ -42,7 +42,7 @@ export function withBookmarks<TBase extends AbstractConstructor<TwitterClientBas
       try {
         let response = await this.fetchWithTimeout(urlWithOperation, {
           method: 'POST',
-          headers,
+          headers: buildHeaders(),
           body,
         });
 
@@ -54,14 +54,14 @@ export function withBookmarks<TBase extends AbstractConstructor<TwitterClientBas
 
           response = await this.fetchWithTimeout(urlWithOperation, {
             method: 'POST',
-            headers,
+            headers: buildHeaders(),
             body,
           });
 
           if (response.status === 404) {
             const retry = await this.fetchWithTimeout(TWITTER_GRAPHQL_POST_URL, {
               method: 'POST',
-              headers,
+              headers: buildHeaders(),
               body,
             });
 

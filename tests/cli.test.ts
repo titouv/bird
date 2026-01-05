@@ -20,6 +20,11 @@ describe('CLI utilities', () => {
       expect(extractTweetId(url)).toBe('1234567890123456789');
     });
 
+    it('should extract ID from i/web/status URLs', () => {
+      const url = 'https://x.com/i/web/status/1234567890123456789';
+      expect(extractTweetId(url)).toBe('1234567890123456789');
+    });
+
     it('should return ID as-is if already an ID', () => {
       const id = '1234567890123456789';
       expect(extractTweetId(id)).toBe('1234567890123456789');
