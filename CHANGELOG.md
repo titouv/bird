@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — Unreleased
 
 ### Added
 - Bookmark exports now support pagination (`--all`, `--max-pages`) with retries (#15) — thanks @Nano1337.
@@ -10,6 +10,7 @@
 
 ### Changed
 - Feature flags can be overridden at runtime via `features.json` (refreshable via `query-ids`).
+
 ## 0.5.1 — 2026-01-01
 
 ### Changed
