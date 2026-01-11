@@ -150,7 +150,7 @@ export function withTimelines<TBase extends AbstractConstructor<TwitterClientBas
                 };
               };
               errors?: Array<{ message: string }>;
-              };
+            };
 
             const instructions = data.data?.user?.result?.timeline?.timeline?.instructions;
             if (data.errors && data.errors.length > 0) {
@@ -181,7 +181,8 @@ export function withTimelines<TBase extends AbstractConstructor<TwitterClientBas
           return firstAttempt;
         }
         const shouldRefresh =
-          firstAttempt.had404 || (typeof firstAttempt.error === 'string' && firstAttempt.error.includes('Query: Unspecified'));
+          firstAttempt.had404 ||
+          (typeof firstAttempt.error === 'string' && firstAttempt.error.includes('Query: Unspecified'));
         if (shouldRefresh) {
           await this.refreshQueryIds();
           const secondAttempt = await fetchPage(pageCount, pageCursor);
